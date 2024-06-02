@@ -281,6 +281,7 @@ class Federated(Experiment):
                     optimizer=self.optimizer_name,
                     lr=self.lr,
                     local_ep=self.local_ep,
+                    local_bs=self.local_bs,
                     verbose=self.verbose,
                     device=self.device
                 )
