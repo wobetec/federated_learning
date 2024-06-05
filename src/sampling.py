@@ -5,6 +5,7 @@
 import os
 import numpy as np
 from torchvision import datasets, transforms
+import requests
 
 
 class Sampling:
@@ -58,8 +59,27 @@ class Sampling:
 
         elif dataset_name == 'cwws':
             data_dir = os.path.join(data_folder, 'cwws/')
-            # TODO Download *The Complete Works of William Shakespeare* dataset
-            raise ValueError('CWWS dataset not available yet')
+            file_path = os.path.join(data_dir, "shakespeare.txt")
+            
+            if not os.path.exists(file_path):
+                # Download the dataset
+                url = "https://www.gutenberg.org/files/100/100-0.txt"
+                response = requests.get(url)
+                os.makedirs(data_dir, exist_ok=True)
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+
+            with open(file_path, "r", encoding="utf-8") as f:
+                text = f.readlines()
+
+            lines = [line.strip() for line in text if line.strip()]
+            train_size = int(0.8 * len(lines))
+            
+            train_data = lines[:train_size]
+            test_data = lines[train_size:]
+
+            return train_data, test_data
+            
         else:
             raise ValueError('Dataset not recognized')
         
@@ -295,5 +315,62 @@ class CIFAR(Sampling):
 
 
 class CWWS(Sampling):
-    # TODO Implement sampling methods for CWWS dataset
-    pass
+    """
+    Wrapper class for CWWS dataset
+    """
+
+    @classmethod
+    def load_dataset(cls):
+        return cls._download_dataset('cwws')
+
+    @classmethod
+    def iid(cls, num_users: int) -> dict:
+        """
+        Sample I.I.D. client data from CWWS dataset
+
+        Params:
+            num_users (int): Number of clients
+
+        Returns:
+            dict_users (dict): Dictionary containing the indices of the samples
+            assigned to each client
+        """
+        train_data, _ = cls.load_dataset()
+        num_items = int(len(train_data) / num_users)
+        dict_users, all_idxs = {}, [i for i in range(len(train_data))]
+        for i in range(num_users):
+            dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
+            all_idxs = list(set(all_idxs) - dict_users[i])
+        return dict_users
+
+    @classmethod
+    def non_iid(cls, num_users: int) -> dict:
+        """
+        Sample non-I.I.D. client data from CWWS dataset
+
+        Params:
+            num_users (int): Number of clients
+
+        Returns:
+            dict_users (dict): Dictionary containing the indices of the samples
+            assigned to each client
+        """
+        train_data, _ = cls.load_dataset()
+        num_shards, num_texts = 200, len(train_data) // 200
+        idx_shard = [i for i in range(num_shards)]
+        dict_users = {i: np.array([]) for i in range(num_users)}
+        idxs = np.arange(num_shards * num_texts)
+
+        labels = np.random.randint(0, num_users, size=len(train_data))
+
+        idxs_labels = np.vstack((idxs, labels))
+        idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
+        idxs = idxs_labels[0, :]
+
+        for i in range(num_users):
+            rand_set = set(np.random.choice(idx_shard, 2, replace=False))
+            idx_shard = list(set(idx_shard) - rand_set)
+            for rand in rand_set:
+                dict_users[i] = np.concatenate(
+                    (dict_users[i], idxs[rand * num_texts:(rand + 1) * num_texts]), axis=0)
+        return dict_users
