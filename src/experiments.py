@@ -2,59 +2,51 @@
 # -*- coding: utf-8 -*-
 # Python version: 3.10
 
-
-from pickletools import optimize
-from tabnanny import verbose
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from time import perf_counter
 import copy
+import numpy as np
+from tqdm import tqdm
 
 import torch
-from torch.utils.data import DataLoader
 from torch import nn
-import numpy as np
+from torch.utils.data import DataLoader
 
-from src.models import MLPMnist, CNNMnist, CNNCifar
 from src.sampling import MNIST, CIFAR
 from src.fed import average_weights, LocalUpdate
-from tensorboardX import SummaryWriter
-import os
+from src.models import MLPMnist, CNNMnist, CNNCifar
 
-
-import matplotlib
-import matplotlib.pyplot as plt
 
 class Experiment:
 
     def __init__(self, args):
+        # Model parameters
         self.exp_name = args.exp_name
 
         self.epochs = args.epochs
-        self.num_users = args.num_users
-        self.frac = args.frac
-        self.local_ep = args.local_ep
-        self.local_bs = args.local_bs
+        try:
+            self.num_users = args.num_users
+            self.frac = args.frac
+            self.local_ep = args.local_ep
+            self.local_bs = args.local_bs
+        except:
+            pass
         self.lr = args.lr
-        self.momentum = args.momentum
 
         self.model_name = args.model
-        self.kernel_num = args.kernel_num
-        self.kernel_sizes = args.kernel_sizes
-        self.num_channels = args.num_channels
-        self.norm = args.norm
-        self.num_filters = args.num_filters
-        self.max_pool = args.max_pool
+        self.optimizer_name = args.optimizer
 
         self.dataset_name = args.dataset
         self.num_classes = args.num_classes
-        self.gpu = args.gpu
-        self.optimizer_name = args.optimizer
         self.iid = args.iid
         self.unequal = args.unequal
-        self.stopping_rounds = args.stopping_rounds
+
+        self.gpu = args.gpu
         self.verbose = args.verbose
-        self.seed = args.seed
+
+        # Model data
+        self.train_accuracy = []
+        self.train_loss = []
+        self.test_accuracy = []
+        self.test_loss = []
 
         self.set_gpu(self.gpu)
         self.train_dataset, self.test_dataset = self.get_dataset()
@@ -65,8 +57,6 @@ class Experiment:
         self.trainloader = self.get_dataloader()
         self.criterion = torch.nn.NLLLoss().to(self.device)
 
-        self.logger = SummaryWriter(os.path.join(os.path.dirname(__file__), '../logs/'))
-
     def set_gpu(self, gpu):
         self.gpu = gpu
         if self.gpu:
@@ -76,7 +66,7 @@ class Experiment:
     def get_model(self):
         if self.model_name == 'cnn':
             if self.dataset_name == 'mnist':
-                return CNNMnist(self.num_channels, self.num_classes)
+                return CNNMnist(self.num_classes)
             elif self.dataset_name == 'cifar':
                 return CNNCifar(self.num_classes)
         elif self.model_name == 'mlp':
@@ -147,36 +137,56 @@ class Experiment:
             pred_labels = pred_labels.view(-1)
             correct += torch.sum(torch.eq(pred_labels, labels)).item()
             total += len(labels)
-
+        self.model.train()
         accuracy = correct/total
-        self.test_acc = accuracy
-        self.test_loss = loss
 
-    def details(self):
-        print('\nExperimental details:')
-        print(f'    Model     : {self.model_name}')
-        print(f'    Optimizer : {self.optimizer_name}')
-        print(f'    Learning  : {self.lr}')
-        print(f'    Global Rounds   : {self.epochs}\n')
+        return accuracy, loss
 
-        print('    Federated parameters:')
-        if self.iid:
-            print('    IID')
-        else:
-            print('    Non-IID')
-        print(f'    Fraction of users  : {self.frac}')
-        print(f'    Local Batch size   : {self.local_bs}')
-        print(f'    Local Epochs       : {self.local_ep}\n')
-        
-    def start_time(self):
-        self.time_start = perf_counter()
+    def __dict__(self):
+        if self.exp_name == 'baseline':
+            return {
+                'exp_name': self.exp_name,
 
-    def end_time(self):
-        self.time_end = perf_counter()
+                'epochs': self.epochs,
+                'lr': self.lr,
 
-    def elapsed_time(self):
-        self.time_elapsed = self.time_end - self.time_start
-        
+                'model_name': self.model_name,
+                'optimizer_name': self.optimizer_name,
+
+                'dataset_name': self.dataset_name,
+                'num_classes': self.num_classes,
+                'iid': self.iid,
+                'unequal': self.unequal,
+
+                'train_accuracy': self.train_accuracy,
+                'train_loss': self.train_loss,
+                'test_accuracy': self.test_accuracy,
+                'test_loss': self.test_accuracy,
+            }
+        return {
+            'exp_name': self.exp_name,
+
+            'epochs': self.epochs,
+            'num_users': self.num_users,
+            'frac': self.frac,
+            'local_ep': self.local_ep,
+            'local_bs': self.local_bs,
+            'lr': self.lr,
+
+            'model_name': self.model_name,
+            'optimizer_name': self.optimizer_name,
+
+            'dataset_name': self.dataset_name,
+            'num_classes': self.num_classes,
+            'iid': self.iid,
+            'unequal': self.unequal,
+
+            'train_accuracy': self.train_accuracy,
+            'train_loss': self.train_loss,
+            'test_accuracy': self.test_accuracy,
+            'test_loss': self.test_accuracy,
+        }
+
 
 class BaseLine(Experiment):
 
@@ -184,7 +194,6 @@ class BaseLine(Experiment):
         super().__init__(args)
         
     def train(self):
-        self.epoch_loss = []
         for epoch in tqdm(range(self.epochs)):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(self.trainloader):
@@ -195,31 +204,37 @@ class BaseLine(Experiment):
                 loss.backward()
                 self.optimizer.step()
                 if batch_idx % 50 == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch+1, batch_idx * len(images), len(self.trainloader.dataset),
-                        100. * batch_idx / len(self.trainloader), loss.item()))
+                    print(f'Train Epoch: {epoch+1} [{batch_idx * len(images)}/{len(self.trainloader.dataset)} ({100. * batch_idx / len(self.trainloader):.0f}%)]\tLoss: {loss.item():.6f}')
                 batch_loss.append(loss.item())
             loss_avg = sum(batch_loss)/len(batch_loss)
             print('\nTrain loss:', loss_avg)
-            self.epoch_loss.append(loss_avg)
-    
-    def plot_loss(self):
-        plt.figure()
-        plt.plot(range(len(self.epoch_loss)), self.epoch_loss)
-        plt.xlabel('epochs')
-        plt.ylabel('Train loss')
-        plt.savefig('./save/nn_{}_{}_{}.png'.format(self.dataset_name, self.model_name, self.epochs))
-    
-    def print_test(self):
-        print('Test on', len(self.test_dataset), 'samples')
-        print("Test Accuracy: {:.2f}%".format(100*self.test_acc))
 
-    def run(self):
-        self.details()
-        self.train()
-        self.plot_loss()
-        self.test_inference()
-        self.print_test()
+            self.train_loss.append(loss_avg)
+
+            # Calculate Train accuracy
+            self.model.eval()
+            total, correct = 0.0, 0.0
+            trainloader = DataLoader(self.train_dataset, batch_size=128,
+                                    shuffle=False)
+            for batch_idx, (images, labels) in enumerate(trainloader):
+                images, labels = images.to(self.device), labels.to(self.device)
+
+                # Inference
+                outputs = self.model(images)
+
+                # Prediction
+                _, pred_labels = torch.max(outputs, 1)
+                pred_labels = pred_labels.view(-1)
+                correct += torch.sum(torch.eq(pred_labels, labels)).item()
+                total += len(labels)
+            self.model.train()
+
+            train_accuracy = correct/total
+            self.train_accuracy.append(train_accuracy)
+
+            test_accuracy, test_loss = self.test_inference()
+            self.test_accuracy.append(test_accuracy)
+            self.test_loss.append(test_loss)
 
 
 class Federated(Experiment):
@@ -229,16 +244,16 @@ class Federated(Experiment):
 
         self.user_groups = self.get_sampling()
 
-    def run(self):
+    def train(self):
         self.global_weights = self.model.state_dict()
         
         # Training
-        train_loss, train_accuracy = [], []
         print_every = 2
 
         for epoch in tqdm(range(self.epochs)):
             local_weights, local_losses = [], []
-            print(f'\n | Global Training Round : {epoch+1} |\n')
+            if self.verbose:
+                print(f'\n | Global Training Round : {epoch+1} |\n')
 
             self.model.train()
             m = max(int(self.frac * self.num_users), 1)
@@ -248,7 +263,6 @@ class Federated(Experiment):
                 local_model = LocalUpdate(
                     dataset=self.train_dataset,
                     idxs=self.user_groups[idx],
-                    logger=self.logger,
                     optimizer=self.optimizer_name,
                     lr=self.lr,
                     local_ep=self.local_ep,
@@ -268,7 +282,7 @@ class Federated(Experiment):
             self.model.load_state_dict(global_weights)
 
             loss_avg = sum(local_losses) / len(local_losses)
-            train_loss.append(loss_avg)
+            self.train_loss.append(loss_avg)
 
             # Calculate avg training accuracy over all users at every epoch
             list_acc, list_loss = [], []
@@ -277,7 +291,6 @@ class Federated(Experiment):
                 local_model = LocalUpdate(
                     dataset=self.train_dataset,
                     idxs=self.user_groups[idx],
-                    logger=self.logger,
                     optimizer=self.optimizer_name,
                     lr=self.lr,
                     local_ep=self.local_ep,
@@ -288,31 +301,15 @@ class Federated(Experiment):
                 acc, loss = local_model.inference(model=self.model)
                 list_acc.append(acc)
                 list_loss.append(loss)
-            train_accuracy.append(sum(list_acc)/len(list_acc))
+            self.train_accuracy.append(sum(list_acc)/len(list_acc))
+
+            test_accuracy, test_loss = self.test_inference()
+            self.test_accuracy.append(test_accuracy)
+            self.test_loss.append(test_loss)
 
             # print global training loss after every 'i' rounds
-            if (epoch+1) % print_every == 0:
-                print(f' \nAvg Training Stats after {epoch+1} global rounds:')
-                print(f'Training Loss : {np.mean(np.array(train_loss))}')
-                print('Train Accuracy: {:.2f}% \n'.format(100*train_accuracy[-1]))
-        
-        matplotlib.use('Agg')
-
-        plt.figure()
-        plt.title('Training Loss vs Communication rounds')
-        plt.plot(range(len(train_loss)), train_loss, color='r')
-        plt.ylabel('Training loss')
-        plt.xlabel('Communication Rounds')
-        plt.savefig('./save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.png'.
-                    format(self.dataset_name, self.model_name, self.epochs, self.frac,
-                        self.iid, self.local_ep, self.local_bs))
-        
-        # Plot Average Accuracy vs Communication rounds
-        plt.figure()
-        plt.title('Average Accuracy vs Communication rounds')
-        plt.plot(range(len(train_accuracy)), train_accuracy, color='k')
-        plt.ylabel('Average Accuracy')
-        plt.xlabel('Communication Rounds')
-        plt.savefig('./save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_acc.png'.
-                    format(self.dataset_name, self.model_name, self.epochs, self.frac,
-                        self.iid, self.local_ep, self.local_bs))
+            if self.verbose:
+                if (epoch+1) % print_every == 0:
+                    print(f' \nAvg Training Stats after {epoch+1} global rounds:')
+                    print(f'Training Loss : {np.mean(np.array(self.train_loss))}')
+                    print(f'Train Accuracy: {100*self.train_accuracy[-1]:.2f}% \n')

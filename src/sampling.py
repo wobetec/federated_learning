@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # Python version: 3.10
 
-
 import os
 import numpy as np
 from torchvision import datasets, transforms
@@ -26,6 +25,10 @@ class Sampling:
         """
 
         data_folder = os.path.join(os.path.dirname(__file__), '../data/')
+        if not os.path.exists(data_folder):
+            os.makedirs(os.path.join(data_folder, 'cifar'))
+            os.makedirs(os.path.join(data_folder, 'mnist'))
+            os.makedirs(os.path.join(data_folder, 'cwws'))
 
         if dataset_name == 'cifar':
             # Download CIFAR-10 dataset from torchvision

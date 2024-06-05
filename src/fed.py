@@ -38,9 +38,8 @@ class DatasetSplit(Dataset):
 
 
 class LocalUpdate(object):
-    def __init__(self, dataset, idxs, logger, optimizer, lr, local_ep, local_bs, verbose, device):
+    def __init__(self, dataset, idxs, optimizer, lr, local_ep, local_bs, verbose, device):
         self.optimizer = optimizer
-        self.logger = logger
         self.lr = lr
         self.local_ep = local_ep
         self.local_bs = local_bs
@@ -94,11 +93,7 @@ class LocalUpdate(object):
                 optimizer.step()
 
                 if self.verbose and (batch_idx % 10 == 0):
-                    print('| Global Round : {} | Local Epoch : {} | [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        global_round, iter, batch_idx * len(images),
-                        len(self.trainloader.dataset),
-                        100. * batch_idx / len(self.trainloader), loss.item()))
-                self.logger.add_scalar('loss', loss.item())
+                    print(f'| Global Round : {global_round} | Local Epoch : {iter} | [{batch_idx * len(images)}/{len(self.trainloader.dataset)} ({100. * batch_idx / len(self.trainloader):.0f}%)]\tLoss: {loss.item():.6f}')
                 batch_loss.append(loss.item())
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
 
