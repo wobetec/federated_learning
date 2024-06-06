@@ -48,7 +48,7 @@ def run_experiment(experiment):
         exp.train()   
     else:
         raise ValueError(f'Unrecognized experiment name: {experiment.exp_name}')
-    save_results(vars(experiment))
+    save_results(exp)
 
 if __name__ == '__main__':
 
