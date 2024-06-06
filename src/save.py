@@ -1,7 +1,7 @@
 import json
 import os
 
-def save_results(experiment, filename="results.json", save_dir="save"):
+def save_results(experiment, filename="results.json", save_dir="saved_results"):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
@@ -12,7 +12,7 @@ def save_results(experiment, filename="results.json", save_dir="save"):
         with open(file_path, "r") as f:
             results = json.load(f)
 
-    exp_key = f"{experiment["exp_name"]}_{experiment["model"]}_{experiment["dataset"]}_{experiment["lr"]}_{experiment["epochs"]}"
+    exp_key = f"{experiment['exp_name']}_{experiment['model']}_{experiment['dataset']}_{experiment['lr']}_{experiment['epochs']}"
 
     if exp_key not in results:
         results[exp_key] = experiment

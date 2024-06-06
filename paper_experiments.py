@@ -1,6 +1,7 @@
 from argparse import Namespace
 from src.experiments import BaseLine, Federated
 import torch
+from src.save import save_results
 
 scheduled_experiments = [
     {
@@ -47,6 +48,7 @@ def run_experiment(experiment):
         exp.train()   
     else:
         raise ValueError(f'Unrecognized experiment name: {experiment.exp_name}')
+    save_results(vars(experiment))
 
 if __name__ == '__main__':
 
