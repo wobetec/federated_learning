@@ -1,13 +1,13 @@
 from argparse import Namespace
 from src.experiments import BaseLine, Federated
 import torch
-from src.save import save_results
+from src.save import save_results, experiment_exists
 
 scheduled_experiments = [
     {
         'exp_name': 'baseline',
 
-        'epochs': 10,
+        'epochs': 2,
         'lr': 0.01,
 
         'model': 'cnn',
@@ -42,12 +42,16 @@ def run_experiment(experiment):
     experiment = Namespace(**experiment)
     if experiment.exp_name == 'baseline':
         exp = BaseLine(experiment)
-        exp.train()
     elif experiment.exp_name == 'federated':
         exp = Federated(experiment)
-        exp.train()   
     else:
         raise ValueError(f'Unrecognized experiment name: {experiment.exp_name}')
+
+    if experiment_exists(exp):
+        print(f"Experimento já existe: {experiment.exp_name}")
+        return
+
+    exp.train()
     save_results(exp)
 
 if __name__ == '__main__':
