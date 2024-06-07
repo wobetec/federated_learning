@@ -260,7 +260,10 @@ class Federated(Experiment):
 
             self.model.train()
             m = max(int(self.frac * self.num_users), 1)
-            idxs_users = np.random.choice(range(self.num_users), m, replace=False)
+            if m == self.num_users:
+                idxs_users = range(self.num_users)
+            else:
+                idxs_users = np.random.choice(range(self.num_users), m, replace=False)
 
             for idx in idxs_users:
                 local_model = LocalUpdate(

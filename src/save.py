@@ -43,7 +43,7 @@ def save_results(experiment, filename="results.json", save_dir="save"):
         results[exp_key] = exp_dict
 
         with open(file_path, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(results, f)
         print(f"Experimento salvo com sucesso: {exp_key}")
     else:
         print(f"Experimento não salvo, já existe: {exp_key}")
