@@ -295,8 +295,7 @@ class CIFAR(Sampling):
         idx_shard = [i for i in range(num_shards)]
         dict_users = {i: np.array([]) for i in range(num_users)}
         idxs = np.arange(num_shards*num_imgs)
-        # labels = dataset.train_labels.numpy()
-        labels = np.array(train_dataset.train_labels)
+        labels = np.array(train_dataset.targets)
 
         # sort labels
         idxs_labels = np.vstack((idxs, labels))
