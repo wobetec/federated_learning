@@ -161,7 +161,7 @@ class Experiment:
                 'train_accuracy': self.train_accuracy,
                 'train_loss': self.train_loss,
                 'test_accuracy': self.test_accuracy,
-                'test_loss': self.test_accuracy,
+                'test_loss': self.test_loss,
             }
         return {
             'exp_name': self.exp_name,
@@ -184,7 +184,7 @@ class Experiment:
             'train_accuracy': self.train_accuracy,
             'train_loss': self.train_loss,
             'test_accuracy': self.test_accuracy,
-            'test_loss': self.test_accuracy,
+            'test_loss': self.test_loss,
         }
 
 
@@ -235,6 +235,9 @@ class BaseLine(Experiment):
             test_accuracy, test_loss = self.test_inference()
             self.test_accuracy.append(test_accuracy)
             self.test_loss.append(test_loss)
+
+            if self.test_accuracy[-1] >= 0.99:
+                break
 
 
 class Federated(Experiment):
@@ -313,3 +316,6 @@ class Federated(Experiment):
                     print(f' \nAvg Training Stats after {epoch+1} global rounds:')
                     print(f'Training Loss : {np.mean(np.array(self.train_loss))}')
                     print(f'Train Accuracy: {100*self.train_accuracy[-1]:.2f}% \n')
+
+            if self.test_accuracy[-1] >= 0.99:
+                break

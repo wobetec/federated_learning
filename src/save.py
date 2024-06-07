@@ -46,4 +46,4 @@ def save_results(experiment, filename="results.json", save_dir="save"):
             json.dump(results, f, indent=4)
         print(f"Experimento salvo com sucesso: {exp_key}")
     else:
-        print(f"Experimento já existe: {exp_key}")
+        print(f"Experimento não salvo, já existe: {exp_key}")

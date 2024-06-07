@@ -11,7 +11,6 @@ def run_experiment(experiment):
         exp = BaseLine(experiment)
     elif experiment.exp_name == 'federated':
         exp = Federated(experiment)
-        exp.train()
     else:
         raise ValueError(f'Unrecognized experiment name: {experiment.exp_name}')
 
