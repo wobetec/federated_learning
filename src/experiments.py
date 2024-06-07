@@ -142,7 +142,7 @@ class Experiment:
 
         return accuracy, loss
 
-    def __dict__(self):
+    def to_dict(self):
         if self.exp_name == 'baseline':
             return {
                 'exp_name': self.exp_name,
