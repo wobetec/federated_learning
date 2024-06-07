@@ -2,8 +2,10 @@ import json
 import os
 
 def get_name(exp_dict):
-    return f"{exp_dict['exp_name']}_{exp_dict['model_name']}_{exp_dict['dataset_name']}_{exp_dict['lr']}_{exp_dict['epochs']}"
-
+    if exp_dict['exp_name'] == 'baseline':
+        return f"{exp_dict['exp_name']}_{exp_dict['model_name']}_{exp_dict['dataset_name']}_{exp_dict['lr']}_{exp_dict['epochs']}_{exp_dict['optimizer_name']}_{exp_dict['num_classes']}_{exp_dict['iid']}_{exp_dict['unequal']}"
+    else:
+        return f"{exp_dict['exp_name']}_{exp_dict['model_name']}_{exp_dict['dataset_name']}_{exp_dict['lr']}_{exp_dict['epochs']}_{exp_dict['num_users']}_{exp_dict['frac']}_{exp_dict['local_ep']}_{exp_dict['local_bs']}_{exp_dict['optimizer_name']}_{exp_dict['num_classes']}_{exp_dict['iid']}_{exp_dict['unequal']}"
 
 def experiment_exists(experiment, filename="results.json", save_dir="save"):
     file_path = os.path.join(save_dir, filename)
@@ -18,7 +20,6 @@ def experiment_exists(experiment, filename="results.json", save_dir="save"):
     exp_key = get_name(exp_dict)
 
     return exp_key in results
-
 
 def save_results(experiment, filename="results.json", save_dir="save"):
     # Cria o diretório se não existir
