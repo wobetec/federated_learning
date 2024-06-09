@@ -29,7 +29,7 @@ if __name__ == '__main__':
         print("No GPU available. Training will run on CPU.")
         gpu = None
 
-    df = pd.read_csv('paper_models.csv')
+    df = pd.read_csv('paper_models.tsv', sep='\t')
     scheduled_experiments = df.to_dict(orient='records')
 
     for experiment in (scheduled_experiments):

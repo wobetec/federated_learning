@@ -313,6 +313,9 @@ class Federated(Experiment):
             self.test_accuracy.append(test_accuracy)
             self.test_loss.append(test_loss)
 
+            if self.model_name == 'cnn':
+                self.lr = self.lr * 0.98
+
             # print global training loss after every 'i' rounds
             if self.verbose:
                 if (epoch+1) % print_every == 0:
