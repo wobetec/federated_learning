@@ -29,6 +29,7 @@ class Experiment:
             self.local_bs = args.local_bs
         except:
             pass
+        self._lr = args.lr
         self.lr = args.lr
 
         self.model_name = args.model
@@ -148,7 +149,7 @@ class Experiment:
                 'exp_name': self.exp_name,
 
                 'epochs': self.epochs,
-                'lr': self.lr,
+                'lr': self._lr,
 
                 'model_name': self.model_name,
                 'optimizer_name': self.optimizer_name,
@@ -171,7 +172,7 @@ class Experiment:
             'frac': self.frac,
             'local_ep': self.local_ep,
             'local_bs': self.local_bs,
-            'lr': self.lr,
+            'lr': self._lr,
 
             'model_name': self.model_name,
             'optimizer_name': self.optimizer_name,
@@ -235,6 +236,9 @@ class BaseLine(Experiment):
             test_accuracy, test_loss = self.test_inference()
             self.test_accuracy.append(test_accuracy)
             self.test_loss.append(test_loss)
+
+            if self.model_name == 'cnn':
+                self.lr = self.lr * 0.98
 
             if self.test_accuracy[-1] >= 0.99:
                 break
